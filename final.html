@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>导游模拟器 · 旅游英语口语实训</title>
+    <style>
+        * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background: #f0f2f5; margin: 0; padding: 16px; min-height: 100vh; }
+        .container { max-width: 480px; margin: 0 auto; background: white; border-radius: 32px; padding: 20px 18px 30px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); position: relative; overflow: hidden; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 2px solid #f0f2f5; }
+        .header h1 { font-size: 1.2rem; margin: 0; color: #2c5f2d; }
+        .header h1 span { font-size: 0.7rem; color: #888; }
+        .note-btn { background: #eef3ee; border: none; padding: 6px 14px; border-radius: 30px; font-size: 0.75rem; color: #2c5f2d; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .note-btn:hover { background: #dce8dc; }
+        .progress-section { margin-bottom: 16px; }
+        .progress-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: #888; margin-bottom: 4px; }
+        .progress-bar-bg { width: 100%; height: 8px; background: #e9ece9; border-radius: 10px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #97bc62, #2c5f2d); border-radius: 10px; transition: width 0.5s ease; }
+        .step-indicators { display: flex; gap: 4px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; }
+        .step-dot { width: 9px; height: 9px; border-radius: 50%; background: #e0e5e0; transition: 0.3s; cursor: pointer; border: none; padding: 0; flex-shrink: 0; }
+        .step-dot.completed { background: #97bc62; }
+        .step-dot.active { background: #2c5f2d; transform: scale(1.3); }
+        .step-dot.failed { background: #d4a0a0; }
+        .step-dot.locked { cursor: not-allowed; opacity: 0.4; }
+        .scene-card { background: #f8faf7; border-radius: 20px; padding: 14px 16px; margin-bottom: 16px; border-left: 6px solid #97bc62; display: flex; gap: 12px; align-items: flex-start; }
+        .avatar { width: 40px; height: 40px; background: #2c5f2d; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; flex-shrink: 0; }
+        .scene-text { flex: 1; }
+        .scene-text .speaker { font-weight: 700; font-size: 0.85rem; color: #2c5f2d; }
+        .scene-text .blind-hint { font-size: 0.85rem; color: #2c5f2d; background: #e6f0e6; padding: 4px 12px; border-radius: 30px; display: inline-block; margin-top: 4px; }
+        .task-card { background: white; border-radius: 20px; padding: 16px 14px; margin-bottom: 14px; border: 1px solid #e8ede8; }
+        .task-card .task-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px; color: #97bc62; font-weight: 700; margin-bottom: 4px; }
+        .task-card .task-title { font-weight: 700; font-size: 1rem; color: #1e2a1e; margin-bottom: 6px; }
+        .task-card .task-desc { font-size: 0.85rem; color: #555; line-height: 1.5; margin-bottom: 12px; }
+        .tag { display: inline-block; font-size: 0.65rem; font-weight: 700; padding: 2px 10px; border-radius: 30px; margin-bottom: 6px; }
+        .tag-key { background: #fef3c7; color: #92400e; }
+        .tag-difficulty { background: #fee2e2; color: #991b1b; }
+        .tag-basic { background: #dbeafe; color: #1e40af; }
+        .tag-apply { background: #d1fae5; color: #065f46; }
+        .audio-player { background: #f0f7ff; border-radius: 16px; padding: 14px; margin: 10px 0; border: 2px solid #c5d9e8; }
+        .audio-player .audio-controls { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+        .audio-player .speed-btn { background: #e8ede8; border: none; padding: 3px 10px; border-radius: 30px; font-size: 0.7rem; font-weight: 600; cursor: pointer; transition: 0.2s; color: #2c5f2d; }
+        .audio-player .speed-btn.active { background: #2c5f2d; color: white; }
+        .audio-player .play-btn { background: #2c5f2d; color: white; border: none; padding: 5px 16px; border-radius: 30px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .audio-player .play-btn:hover { background: #1f4a20; }
+        .audio-player .play-btn.playing { background: #c0392b; }
+        .audio-player .audio-status { font-size: 0.75rem; color: #666; margin-top: 4px; }
+        .blind-toggle { display: flex; gap: 8px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+        .btn-outline { background: transparent; border: 2px solid #2c5f2d; color: #2c5f2d; padding: 3px 12px; border-radius: 40px; font-weight: 600; font-size: 0.75rem; cursor: pointer; transition: 0.2s; }
+        .btn-outline:hover { background: #2c5f2d; color: white; }
+        .transcript-area { background: #fafafa; border-radius: 16px; padding: 14px; margin: 10px 0; border: 2px dashed #d0d8d0; display: none; }
+        .transcript-area.show { display: block; }
+        .transcript-area .transcript-text { font-size: 0.9rem; line-height: 1.8; margin-top: 4px; color: #1e2a1e; }
+        .record-section { margin: 10px 0; }
+        .record-btn { background: #2c5f2d; color: white; border: none; padding: 14px 20px; border-radius: 40px; font-weight: 700; font-size: 0.95rem; cursor: pointer; width: 100%; transition: 0.2s; }
+        .record-btn.recording { background: #c0392b; animation: pulse 1s infinite; }
+        .record-btn:disabled { background: #b0c8b0; cursor: not-allowed; }
+        .record-status { font-size: 0.75rem; color: #888; margin-top: 4px; text-align: center; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        .action-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+        .action-row .btn-secondary { flex: 1; background: #e8ede8; border: none; padding: 8px 12px; border-radius: 40px; font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: 0.2s; color: #2c5f2d; }
+        .action-row .btn-secondary:hover:not(:disabled) { background: #d5ded5; }
+        .action-row .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+        .action-row .btn-confirm { flex: 1; background: #2c5f2d; color: white; border: none; padding: 8px 12px; border-radius: 40px; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
+        .action-row .btn-confirm:hover:not(:disabled) { background: #1f4a20; }
+        .action-row .btn-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
+        .action-row .btn-confirm.confirmed { background: #6c8cff; cursor: default; }
+        .feedback-box { background: #f8faf7; border-radius: 20px; padding: 14px 16px; margin-top: 10px; display: none; border: 2px solid #e8ede8; }
+        .feedback-box.show { display: block; }
+        .feedback-box .stars { font-size: 1.6rem; letter-spacing: 4px; }
+        .feedback-box .feedback-msg { font-size: 0.9rem; color: #1e2a1e; margin-top: 4px; line-height: 1.5; }
+        .feedback-box .collect-btn { margin-top: 10px; background: #f5f0d7; border: none; padding: 5px 14px; border-radius: 30px; font-size: 0.75rem; color: #6a5d2e; cursor: pointer; font-weight: 600; }
+        .feedback-box .collect-btn:hover { background: #ede7c4; }
+        .feedback-box .collect-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .feedback-box .eval-detail-list { margin: 8px 0; padding-left: 0; list-style: none; }
+        .feedback-box .eval-detail-list li { font-size: 0.8rem; padding: 3px 0; border-bottom: 1px dashed #e8ede8; }
+        .feedback-box .eval-detail-list li.good { color: #2c7a2c; }
+        .feedback-box .eval-detail-list li.bad { color: #c0392b; }
+        .feedback-box .eval-detail-list li.neutral { color: #555; }
+        .attempt-log { margin-top: 10px; border-top: 1px solid #eee; padding-top: 8px; }
+        .attempt-log .attempt-title { font-size: 0.7rem; color: #888; font-weight: 700; text-transform: uppercase; }
+        .attempt-log .attempt-item { font-size: 0.75rem; padding: 3px 0; border-bottom: 1px dashed #f0f2f5; display: flex; justify-content: space-between; }
+        .attempt-log .attempt-item .attempt-stars { font-size: 0.8rem; }
+        .bottom-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 2px solid #f0f2f5; }
+        .bottom-nav .nav-btn { background: #e8ede8; border: none; padding: 8px 18px; border-radius: 40px; font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: 0.2s; color: #2c5f2d; }
+        .bottom-nav .nav-btn:hover:not(:disabled) { background: #d5ded5; }
+        .bottom-nav .nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .bottom-nav .nav-btn.primary { background: #2c5f2d; color: white; }
+        .bottom-nav .nav-btn.primary:hover:not(:disabled) { background: #1f4a20; }
+        .bottom-nav .step-counter { font-size: 0.7rem; color: #aaa; }
+        .report-page { display: none; }
+        .report-page.active { display: block; }
+        .report-page h2 { color: #2c5f2d; border-bottom: 2px solid #eef5f0; padding-bottom: 10px; margin-top: 0; font-size: 1.2rem; }
+        .report-summary { display: flex; justify-content: space-around; background: #f8faf7; border-radius: 20px; padding: 16px; margin: 12px 0; flex-wrap: wrap; gap: 6px; }
+        .report-summary .stat { text-align: center; }
+        .report-summary .stat .number { font-size: 1.8rem; font-weight: 700; color: #2c5f2d; }
+        .report-summary .stat .label { font-size: 0.7rem; color: #888; }
+        .report-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+        .report-item .step-stars { font-size: 1rem; }
+        .report-notes { background: #f8faf7; border-radius: 20px; padding: 14px; margin-top: 12px; max-height: 150px; overflow-y: auto; }
+        .report-notes .note-entry { font-size: 0.8rem; padding: 3px 0; border-bottom: 1px dashed #e0e5e0; }
+        .report-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+        .report-actions button { flex: 1; min-width: 100px; padding: 10px; border-radius: 40px; font-weight: 600; font-size: 0.85rem; cursor: pointer; border: none; transition: 0.2s; }
+        .report-actions .btn-secondary { background: #e8ede8; color: #2c5f2d; }
+        .report-actions .btn-primary { background: #2c5f2d; color: white; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 999; }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: white; border-radius: 32px; max-width: 500px; width: 92%; padding: 20px 18px 24px; max-height: 80vh; overflow-y: auto; }
+        .modal-box h3 { font-size: 1.2rem; color: #2c5f2d; margin-top: 0; border-bottom: 2px solid #eef5f0; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-box h3 button { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #999; }
+        .note-item { background: #f8faf7; border-radius: 16px; padding: 10px 14px; margin-bottom: 8px; border-left: 4px solid #97bc62; }
+        .note-item .note-source { font-size: 0.65rem; color: #97bc62; font-weight: 700; text-transform: uppercase; }
+        .note-item .note-content { font-size: 0.85rem; color: #1e2a1e; margin-top: 2px; line-height: 1.5; }
+        .note-item .note-time { font-size: 0.65rem; color: #bbb; margin-top: 2px; }
+        .empty-note { color: #bbb; text-align: center; padding: 20px 0; font-size: 0.85rem; }
+        .phase-badge { display: inline-block; font-size: 0.6rem; font-weight: 700; padding: 1px 8px; border-radius: 30px; margin-left: 6px; }
+        .phase-pre { background: #dbeafe; color: #1e40af; }
+        .phase-during { background: #fef3c7; color: #92400e; }
+        .phase-post { background: #d1fae5; color: #065f46; }
+        @media (max-width: 480px) { body { padding: 8px; } .container { padding: 14px 12px 20px; border-radius: 24px; } .bottom-nav .nav-btn { padding: 6px 14px; font-size: 0.75rem; } .step-dot { width: 8px; height: 8px; } }
+    </style>
+</head>
+<body>
+<div class="container" id="appContainer">
+    <div class="header">
+        <h1>🧭 导游模拟器 <span>· 旅游英语口语实训</span></h1>
+        <button class="note-btn" id="openNoteBtn">📒 语料笔记</button>
+    </div>
+    <div class="progress-section">
+        <div class="progress-label"><span>实训进度</span><span id="progressText">0 / 9 步</span></div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+    </div>
+    <div class="step-indicators" id="stepDots">
+        <span class="step-dot active" data-step="0"></span>
+        <span class="step-dot" data-step="1"></span>
+        <span class="step-dot" data-step="2"></span>
+        <span class="step-dot" data-step="3"></span>
+        <span class="step-dot" data-step="4"></span>
+        <span class="step-dot" data-step="5"></span>
+        <span class="step-dot" data-step="6"></span>
+        <span class="step-dot" data-step="7"></span>
+        <span class="step-dot" data-step="8"></span>
+    </div>
+    <div id="contentArea"></div>
+    <div class="report-page" id="reportPage">
+        <h2>📊 旅游英语口语实训 · 综合报告</h2>
+        <div id="reportPhaseSummary" style="display:flex; gap:6px; flex-wrap:wrap; margin:8px 0;"></div>
+        <div class="report-summary" id="reportSummary">
+            <div class="stat"><div class="number" id="totalStars">0</div><div class="label">总星级</div></div>
+            <div class="stat"><div class="number" id="perfectCount">0</div><div class="label">优秀表现</div></div>
+            <div class="stat"><div class="number" id="avgScore">0%</div><div class="label">综合得分</div></div>
+        </div>
+        <div id="reportDetail"></div>
+        <div id="reportGoalAchievement" style="background:#f8faf7; border-radius:16px; padding:14px; margin:12px 0;"></div>
+        <div class="report-notes" id="reportNotesContainer">
+            <strong>📒 语料笔记汇总</strong>
+            <div id="reportNotesList"></div>
+        </div>
+        <div class="report-actions">
+            <button class="btn-secondary" id="restartBtn">🔄 重新实训</button>
+            <button class="btn-primary" id="exportReportBtn">📎 导出报告</button>
+        </div>
+    </div>
+    <div class="bottom-nav">
+        <button class="nav-btn" id="prevBtn" disabled>⬅ 上一页</button>
+        <span class="step-counter" id="stepCounter">步骤 1 / 9</span>
+        <button class="nav-btn primary" id="nextBtn">下一页 ➡</button>
+    </div>
+</div>
+<div class="modal-overlay" id="noteModal">
+    <div class="modal-box">
+        <h3>📒 我的语料笔记 <button id="closeNoteBtn">✕</button></h3>
+        <div id="noteList"><div class="empty-note">✨ 还没有收藏语料</div></div>
+        <div style="margin-top:14px; text-align:right;">
+            <button class="btn-secondary" id="clearNoteBtn" style="color:#a55; font-size:0.8rem; padding:6px 14px;">清空笔记</button>
+        </div>
+    </div>
+</div>
+<script>
+// ================================================================
+//  数据定义（9个步骤）
+// ================================================================
+const steps = [
+    // ===== 行前阶段 =====
+    { id: 'pre_consult', label: '行前咨询', phase: 'pre', tag: '🔹 基础能力', tagClass: 'tag-basic',
+        scene: { speaker: '📧 客人邮件（语音）' },
+        task: { title: '🗣️ 听留言 · 口头回复', desc: '先听客人的语音留言，然后用英文口头回复客人。', audioText: 'Hello, I\'m planning a trip to Chengdu next month. Could you recommend a 3-day itinerary and help me book a hotel? I\'d also like to know the best way to get around the city. Looking forward to your reply.', prompt: '请用英文口头回复，包括：确认收到留言、简要回应需求、承诺进一步帮助。', keywords: ['hello','thank','itinerary','hotel','help','reply','Chengdu'], collectSuggestion: 'Thank you for your message. I\'d be happy to help you plan your trip to Chengdu...' } },
+    { id: 'pre_itinerary', label: '行程规划', phase: 'pre', tag: '🔹 基础能力', tagClass: 'tag-basic',
+        scene: { speaker: '📧 客人 Mr. Johnson' },
+        task: { title: '🗣️ 口头建议行程', desc: '客人想请你规划3天成都行程。请用英文口头建议行程安排。', audioText: 'Hello, this is Mr. Johnson again. I\'ve got three days in Chengdu and I want to make the most of it. Could you suggest a 3-day itinerary for me? I\'m interested in pandas, history, and local food. Also, please recommend a nice hotel near the city center.', prompt: '用英文口头建议3天行程，包括：看熊猫、历史景点、当地美食推荐，以及酒店建议。', keywords: ['three days','itinerary','pandas','history','local food','hotel','city center'], collectSuggestion: 'For your 3-day trip, I suggest visiting the Panda Base on day one...' } },
+    // ===== 行中阶段 =====
+    { id: 'greeting', label: '接机问候', phase: 'during', tag: '⭐ 教学重点', tagClass: 'tag-key',
+        scene: { speaker: '🧑‍💼 客人 Mr. Johnson' },
+        task: { title: '🗣️ 口头问候客人', desc: '客人刚下飞机，正在找你。请用英文口头问候并表明身份。', audioText: 'Hello! I just got off the plane. I see you holding a sign that says "Welcome to Chengdu". Are you my tour guide?', prompt: '请用英文口头问候客人，表明你是他的导游，并表达欢迎。', keywords: ['hello','welcome','Chengdu','guide','name','pleasure'], collectSuggestion: 'Good afternoon, Mr. Johnson! I\'m your tour guide. Welcome to Chengdu!' } },
+    { id: 'self_intro', label: '自我介绍', phase: 'during', tag: '⭐ 教学重点', tagClass: 'tag-key',
+        scene: { speaker: '🧑‍💼 客人 Mr. Johnson' },
+        task: { title: '🗣️ 口头自我介绍', desc: '客人想了解你。请用英文口头介绍自己（姓名、经验、服务承诺）。', audioText: 'Nice to meet you! I\'m really excited about this trip. Could you tell me a bit about yourself?', prompt: '用英文口头介绍自己：姓名、从业年限、为什么喜欢做导游、能为客人提供什么。', keywords: ['name','years','guide','Chengdu','help','enjoy','experience'], collectSuggestion: 'My name is Li Wei. I have been a tour guide for 5 years. I love showing visitors the beauty of Chengdu.' } },
+    { id: 'baggage', label: '行李确认', phase: 'during', tag: '🎯 教学难点', tagClass: 'tag-difficulty',
+        scene: { speaker: '🧑‍💼 客人 Mr. Johnson' },
+        task: { title: '🧳 口头回应行李需求', desc: '客人需要帮忙拿行李。请用英文口头回应，确认行李信息并安排。', audioText: 'I have two suitcases. One is black and the other is blue. Can you help me with them?', prompt: '用英文口头回应：确认行李数量和颜色，主动提供帮助，安排搬运。', keywords: ['suitcase','black','blue','help','take','follow'], collectSuggestion: 'Of course, Mr. Johnson. Let me take the black suitcase, and please follow me with the blue one.' } },
+    { id: 'car_ride', label: '车上介绍', phase: 'during', tag: '🎯 教学难点', tagClass: 'tag-difficulty',
+        scene: { speaker: '🧑‍💼 客人 Mr. Johnson' },
+        task: { title: '🚗 口头回答并介绍', desc: '客人询问车程和酒店情况。请用英文口头回答，并主动介绍沿途风景。', audioText: 'Great! Thank you. By the way, how long does it take to get to the hotel? And is it a nice hotel?', prompt: '用英文口头回答：车程时间、酒店星级/特色，并主动介绍成都的风景。', keywords: ['minutes','hotel','star','view','scenery','city'], collectSuggestion: 'It takes about 40 minutes. The hotel is a 5-star hotel with a great view of the city. On the way, you can enjoy the beautiful scenery of Chengdu.' } },
+    { id: 'full_review', label: '完整复述', phase: 'during', tag: '🎯 核心输出', tagClass: 'tag-difficulty',
+        scene: { speaker: '🧑‍💼 客人 Mr. Johnson' },
+        task: { title: '🎙️ 完整复述接机过程', desc: '客人想让你总结今天的接机服务。请用英文完整复述整个过程。', audioText: 'It\'s been a wonderful journey. Could you summarize the whole airport pickup process for me? I\'d like to share it with my friends.', prompt: '用英文完整复述：从机场初次见面到上车前往酒店的全过程，包括问候、自我介绍、行李确认、路上介绍。尽量使用完整句子和自然连读。', keywords: ['hello','welcome','name','guide','suitcase','hotel','scenery','minutes'], collectSuggestion: 'First, I greeted Mr. Johnson at the airport...' } },
+    // ===== 行后阶段 =====
+    { id: 'post_farewell', label: '送行告别', phase: 'post', tag: '🔸 综合应用', tagClass: 'tag-apply',
+        scene: { speaker: '🧑‍💼 客人 Mr. Johnson' },
+        task: { title: '👋 口头送行告别', desc: '客人要离开成都了。请用英文口头表达告别和祝福。', audioText: 'I really enjoyed my trip in Chengdu. Thank you for everything. I\'m heading to the airport now.', prompt: '用英文口头告别：表达感谢、回顾旅程、送上祝福、期待再见。', keywords: ['welcome','enjoy','trip','Chengdu','thanks','come','again'], collectSuggestion: 'It was my pleasure to be your guide. I hope you enjoyed Chengdu as much as I enjoyed showing it to you.' } },
+    { id: 'post_survey', label: '满意度评价', phase: 'post', tag: '🔸 综合应用', tagClass: 'tag-apply',
+        scene: { speaker: '🧑‍💼 客人 Mr. Johnson' },
+        task: { title: '📝 口头评价服务', desc: '客人想请你帮忙填写满意度调查。请用英文口头收集反馈。', audioText: 'Hi! My trip is coming to an end and I really enjoyed it. Thank you for being such a wonderful guide. Could you help me fill out a satisfaction survey? I\'d like to share my feedback about your service.', prompt: '用英文口头回应：感谢客人的反馈，询问对哪些方面满意，是否有改进建议。', keywords: ['trip','enjoy','thank you','guide','satisfaction survey','feedback','service'], collectSuggestion: 'Thank you for your kind words. I\'m glad you enjoyed the trip. Could you share your feedback about the service?' } }
+];
+
+// ================================================================
+//  状态管理
+// ================================================================
+let currentStep = 0;
+let completedSteps = new Array(steps.length).fill(false);
+let stepResults = new Array(steps.length).fill(null);
+let attemptLogs = new Array(steps.length).fill(null).map(() => []);
+let notes = [];
+const NOTE_KEY = 'guide_notes_oral';
+const totalSteps = steps.length;
+
+function speakText(text, rate = 0.9) {
+    if (!window.speechSynthesis) return false;
+    try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'en-US';
+        u.rate = rate;
+        u.volume = 1;
+        window.speechSynthesis.speak(u);
+        return true;
+    } catch(e) { return false; }
+}
+
+function showToast(msg) {
+    const t = document.createElement('div');
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#2c5f2d;color:white;padding:8px 20px;border-radius:40px;font-size:0.85rem;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,0.15);transition:0.3s;opacity:0;';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.style.opacity = '1', 50);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 2000);
+}
+
+function loadNotes() {
+    try { const s = localStorage.getItem(NOTE_KEY); if (s) notes = JSON.parse(s); else notes = []; } catch(e) { notes = []; }
+    renderNoteList();
+}
+function saveNotes() { localStorage.setItem(NOTE_KEY, JSON.stringify(notes)); renderNoteList(); }
+function addNote(source, content) {
+    notes.unshift({ id: Date.now(), source, content, time: new Date().toLocaleString('zh-CN') });
+    saveNotes();
+    showToast('📒 已收藏到语料笔记！');
+}
+
+// ================================================================
+//  评价函数
+// ================================================================
+function detailedEvaluate(transcript, keywords) {
+    const text = transcript.toLowerCase();
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+    let details = [];
+    let matchCount = 0;
+    keywords.forEach(kw => {
+        if (text.includes(kw.toLowerCase())) { matchCount++; details.push({ icon: '✅', text: `使用了关键词 "${kw}"`, type: 'good' }); }
+        else { details.push({ icon: '❌', text: `未使用关键词 "${kw}"（建议加入）`, type: 'bad' }); }
+    });
+    const wordCount = words.length;
+    if (wordCount < 8) details.push({ icon: '⚠️', text: '句子偏短，建议增加内容，使表达更完整。', type: 'bad' });
+    else if (wordCount > 20) details.push({ icon: '✅', text: '句子长度适中，表达较充分。', type: 'good' });
+    else details.push({ icon: '👍', text: '句子长度合理。', type: 'good' });
+    if (text.includes('he ') || text.includes('she ') || text.includes('it ') || text.includes('mr.')) {
+        const thirdPersonVerbs = ['go','come','take','make','do','have','say','see','get','give'];
+        thirdPersonVerbs.forEach(v => {
+            if (text.includes(` ${v} `) && !text.includes(` ${v}s `) && !text.includes(` ${v}es `)) {
+                if (!text.includes(`does ${v}`) && !text.includes(`did ${v}`) && !text.includes(`will ${v}`)) {
+                    details.push({ icon: '⚠️', text: `可能的主谓一致问题：第三人称单数建议用 "${v}s" 或 "${v}es"`, type: 'bad' });
+                }
+            }
+        });
+    }
+    const multiSyllableWords = ['Chengdu','itinerary','recommend','suitcase','luggage','scenery','comfortable','experience','introduce','beautiful','welcome','Johnson','airport','hotel','minutes'];
+    multiSyllableWords.forEach(w => {
+        if (text.includes(w.toLowerCase())) {
+            details.push({ icon: '🔊', text: `重音提示：单词 "${w}" 的重音通常在 第一音节`, type: 'neutral' });
+        }
+    });
+    const linkPhrases = ['i\'d like to','want to','going to','kind of','lot of','let me','of course'];
+    let foundLinks = linkPhrases.filter(p => text.includes(p));
+    if (foundLinks.length > 0) details.push({ icon: '✅', text: `注意到了连读：${foundLinks.join(', ')}`, type: 'good' });
+    else details.push({ icon: '💡', text: '建议尝试连读，如 "want to" → "wanna"', type: 'neutral' });
+
+    const ratio = keywords.length > 0 ? matchCount / keywords.length : 0;
+    const lengthScore = Math.min(1, wordCount / 20);
+    const total = ratio * 0.6 + lengthScore * 0.4;
+    let level = 'poor';
+    if (total >= 0.7) level = 'perfect';
+    else if (total >= 0.4) level = 'good';
+    if (details.length > 8) details = details.slice(0, 8);
+    return { level, details };
+}
+
+// ================================================================
+//  渲染与事件绑定
+// ================================================================
+let currentSpeed = 1;
+let isRecording = false;
+let recognition = null;
+let finalTranscript = '';
+
+function renderStep(idx) {
+    const step = steps[idx];
+    if (!step) return;
+    const area = document.getElementById('contentArea');
+    document.getElementById('reportPage').classList.remove('active');
+
+    const scene = step.scene;
+    const task = step.task;
+    const tag = step.tag;
+    const tagClass = step.tagClass || 'tag-basic';
+    const phaseMap = { pre:'行前', during:'行中', post:'行后' };
+    const phaseLabel = phaseMap[step.phase] || '';
+
+    let taskHTML = `
+        <div class="scene-card">
+            <div class="avatar">🧳</div>
+            <div class="scene-text">
+                <div class="speaker">${scene.speaker} <button class="speak-btn" id="speakSceneBtn" style="background:none;border:none;font-size:0.9rem;cursor:pointer;">🔊</button></div>
+                <div class="blind-hint">🔇 盲听挑战：点击下方播放按钮听取语音，不要看文字</div>
+            </div>
+        </div>
+        <div class="task-card">
+            <div><span class="tag ${tagClass}">${tag}</span> <span class="phase-badge phase-${step.phase}">${phaseLabel}</span></div>
+            <div class="task-label">${task.title}</div>
+            <div class="task-desc">${task.desc}</div>
+    `;
+
+    if (task.audioText) {
+        taskHTML += `
+            <div class="audio-player">
+                <div style="font-weight:600; font-size:0.8rem; color:#1e3a5f;">🔊 点击播放听取客人语音</div>
+                <div style="font-size:0.75rem; color:#666; margin:4px 0 6px 0;">可调速播放，尝试听懂后再回答。</div>
+                <div class="audio-controls">
+                    <button class="play-btn" id="playAudioBtn">▶ 播放</button>
+                    <span style="font-size:0.7rem; color:#888; margin-left:4px;">倍速：</span>
+                    <button class="speed-btn" data-speed="0.5">0.5×</button>
+                    <button class="speed-btn active" data-speed="1">1×</button>
+                    <button class="speed-btn" data-speed="1.5">1.5×</button>
+                    <button class="speed-btn" data-speed="2">2×</button>
+                </div>
+                <div class="audio-status" id="audioStatus">⏸️ 准备播放</div>
+            </div>
+            <div class="blind-toggle">
+                <button class="btn-outline" id="toggleTranscriptBtn">📄 显示逐字稿</button>
+                <span class="hint-text" style="font-size:0.75rem; color:#666;">💡 听不懂时可查看文字</span>
+            </div>
+            <div class="transcript-area" id="transcriptArea">
+                <div class="transcript-text">${task.audioText}</div>
+            </div>
+        `;
+    }
+
+    if (task.prompt) {
+        taskHTML += `
+            <div style="background:#f0f7ff; border-radius:16px; padding:10px 14px; margin:10px 0; border-left:4px solid #6c8cff;">
+                <div style="font-weight:600; font-size:0.8rem; color:#1e3a5f;">💬 口语提示</div>
+                <div style="font-size:0.85rem; color:#444; margin-top:2px;">${task.prompt}</div>
+            </div>
+        `;
+    }
+
+    taskHTML += `
+        <div class="record-section">
+            <button class="record-btn" id="recordBtn">🎤 点击开始录音</button>
+            <div class="record-status" id="recordStatus">⏸️ 准备就绪，点击上方按钮开始</div>
+        </div>
+        <div class="feedback-box" id="feedbackBox">
+            <div class="stars" id="starsDisplay"></div>
+            <div class="feedback-msg" id="feedbackMsg"></div>
+            <div id="transcriptDisplay" style="background:white; border-radius:12px; padding:10px; margin:8px 0; border:1px solid #ddd; font-size:0.9rem; line-height:1.8;"></div>
+            <ul class="eval-detail-list" id="evalDetailList"></ul>
+            <div class="action-row">
+                <button class="btn-secondary" id="retryBtn">🔄 重新录音</button>
+                <button class="btn-confirm" id="confirmBtn">✅ 确认提交</button>
+            </div>
+            <button class="collect-btn" id="collectNoteBtn" style="margin-top:6px;">📒 收藏到语料笔记</button>
+        </div>
+        <div class="attempt-log" id="attemptLog">
+            <div class="attempt-title">📋 尝试记录</div>
+            <div id="attemptList"></div>
+        </div>
+    `;
+    taskHTML += `</div>`;
+
+    area.innerHTML = taskHTML;
+
+    updateIndicators();
+    updateProgress();
+    document.getElementById('stepCounter').textContent = `步骤 ${idx+1} / ${totalSteps}`;
+    document.getElementById('prevBtn').disabled = (idx === 0);
+    document.getElementById('nextBtn').disabled = (idx === totalSteps - 1);
+
+    if (completedSteps[idx]) {
+        const res = stepResults[idx];
+        if (res) {
+            const fb = document.getElementById('feedbackBox');
+            if (fb) {
+                fb.classList.add('show');
+                const sm = { perfect:'⭐⭐⭐', good:'⭐⭐', poor:'⭐' };
+                document.getElementById('starsDisplay').textContent = sm[res] || '⭐⭐';
+                const msgs = { perfect:'🌟 优秀！内容完整，表达清晰。', good:'👍 良好！再接再厉，可以更丰富。', poor:'💡 建议多练习，注意关键词和表达完整性。' };
+                document.getElementById('feedbackMsg').textContent = msgs[res] || msgs.good;
+                document.getElementById('recordBtn').disabled = true;
+                document.getElementById('recordBtn').textContent = '✅ 已完成';
+                document.getElementById('retryBtn').disabled = true;
+                document.getElementById('confirmBtn').disabled = true;
+                document.getElementById('confirmBtn').classList.add('confirmed');
+                document.getElementById('confirmBtn').textContent = '✅ 已提交';
+                const cb = document.getElementById('collectNoteBtn');
+                if (cb) { cb.textContent = '✅ 已收藏'; cb.disabled = true; cb.style.background = '#dce8dc'; }
+            }
+            renderAttemptLog(idx);
+        }
+    } else {
+        renderAttemptLog(idx);
+    }
+
+    bindEvents(idx);
+    document.getElementById('speakSceneBtn')?.addEventListener('click', () => {
+        speakText(scene.speaker.replace(/[^a-zA-Z ]/g, ''));
+    });
+}
+
+function renderAttemptLog(idx) {
+    const container = document.getElementById('attemptList');
+    if (!container) return;
+    const logs = attemptLogs[idx] || [];
+    if (logs.length === 0) {
+        container.innerHTML = '<div style="font-size:0.75rem; color:#bbb; padding:4px 0;">还没有录音尝试</div>';
+        return;
+    }
+    let html = '';
+    logs.forEach((entry, i) => {
+        const isLatest = (i === logs.length - 1);
+        const highlight = isLatest ? 'style="background:#eaf3ea; border-radius:8px; padding:3px 6px;"' : '';
+        const shortText = entry.transcript.length > 25 ? entry.transcript.substring(0, 25) + '...' : entry.transcript;
+        html += `<div class="attempt-item" ${highlight}><span>#${entry.attempt} ${shortText}</span><span class="attempt-stars">${entry.stars}</span></div>`;
+    });
+    container.innerHTML = html;
+}
+
+function bindEvents(idx) {
+    const step = steps[idx];
+    const task = step.task;
+
+    const playBtn = document.getElementById('playAudioBtn');
+    const speedBtns = document.querySelectorAll('.speed-btn');
+    const audioStatus = document.getElementById('audioStatus');
+    let isPlaying = false;
+
+    if (playBtn && task.audioText) {
+        function playAudio() {
+            if (isPlaying) {
+                window.speechSynthesis.cancel();
+                isPlaying = false;
+                playBtn.textContent = '▶ 播放';
+                playBtn.classList.remove('playing');
+                audioStatus.textContent = '⏸️ 已停止';
+                return;
+            }
+            const rate = currentSpeed || 1;
+            const success = speakText(task.audioText, rate);
+            if (success) {
+                isPlaying = true;
+                playBtn.textContent = '⏹ 停止';
+                playBtn.classList.add('playing');
+                audioStatus.textContent = '🔊 正在播放...';
+                const checkEnd = setInterval(() => {
+                    if (!window.speechSynthesis.speaking && isPlaying) {
+                        isPlaying = false;
+                        playBtn.textContent = '▶ 播放';
+                        playBtn.classList.remove('playing');
+                        audioStatus.textContent = '✅ 播放完成';
+                        clearInterval(checkEnd);
+                    }
+                }, 300);
+                setTimeout(() => {
+                    if (isPlaying) {
+                        window.speechSynthesis.cancel();
+                        isPlaying = false;
+                        playBtn.textContent = '▶ 播放';
+                        playBtn.classList.remove('playing');
+                        audioStatus.textContent = '⏹️ 播放超时已停止';
+                        clearInterval(checkEnd);
+                    }
+                }, 30000);
+            } else {
+                audioStatus.textContent = '⚠️ 语音合成失败，请查看下方逐字稿';
+                showToast('⚠️ 当前浏览器不支持语音合成，请点击"显示逐字稿"查看内容');
+                const ta = document.getElementById('transcriptArea');
+                const tb = document.getElementById('toggleTranscriptBtn');
+                if (ta && tb) { ta.classList.add('show'); tb.textContent = '📄 隐藏逐字稿'; }
+            }
+        }
+        playBtn.addEventListener('click', playAudio);
+        speedBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                speedBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentSpeed = parseFloat(this.dataset.speed);
+                if (isPlaying) {
+                    window.speechSynthesis.cancel();
+                    isPlaying = false;
+                    playBtn.textContent = '▶ 播放';
+                    playBtn.classList.remove('playing');
+                    audioStatus.textContent = '⏸️ 已停止，点击重新播放';
+                    setTimeout(() => { playAudio(); }, 200);
+                }
+            });
+        });
+    }
+
+    const toggleBtn = document.getElementById('toggleTranscriptBtn');
+    const transcriptArea = document.getElementById('transcriptArea');
+    if (toggleBtn && transcriptArea) {
+        transcriptArea.classList.remove('show');
+        toggleBtn.textContent = '📄 显示逐字稿';
+        toggleBtn.addEventListener('click', function() {
+            const isShow = transcriptArea.classList.toggle('show');
+            this.textContent = isShow ? '📄 隐藏逐字稿' : '📄 显示逐字稿';
+        });
+    }
+
+    const recordBtn = document.getElementById('recordBtn');
+    const status = document.getElementById('recordStatus');
+    const retryBtn = document.getElementById('retryBtn');
+    const confirmBtn = document.getElementById('confirmBtn');
+    if (!recordBtn) return;
+
+    function initRecognition() {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SR();
+            recognition.lang = 'en-US';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+            return true;
+        }
+        return false;
+    }
+
+    function performEvaluation(transcript, attemptNum) {
+        const evalResult = detailedEvaluate(transcript, task.keywords || []);
+        const result = evalResult.level;
+        const starsMap = { perfect:'⭐⭐⭐', good:'⭐⭐', poor:'⭐' };
+        const entry = { attempt: attemptNum, transcript, level: result, stars: starsMap[result] || '⭐⭐', details: evalResult.details };
+        attemptLogs[idx].push(entry);
+        renderAttemptLog(idx);
+
+        document.getElementById('starsDisplay').textContent = starsMap[result] || '⭐⭐';
+        const msgs = { perfect:'🌟 优秀！内容完整，表达清晰。', good:'👍 良好！再接再厉，可以更丰富。', poor:'💡 建议多练习，注意关键词和表达完整性。' };
+        document.getElementById('feedbackMsg').textContent = msgs[result] || msgs.good;
+
+        const td = document.getElementById('transcriptDisplay');
+        if (td) {
+            let colored = transcript;
+            (task.keywords || []).forEach(kw => {
+                const regex = new RegExp(`\\b${kw}\\b`, 'gi');
+                colored = colored.replace(regex, match => `<span style="background:#d4edda; padding:0 4px; border-radius:4px;">${match}</span>`);
+            });
+            td.innerHTML = `<strong>🎤 第 ${attemptNum} 次尝试：</strong> ${colored}`;
+        }
+
+        const dl = document.getElementById('evalDetailList');
+        if (dl) {
+            let items = '';
+            evalResult.details.forEach(d => {
+                const cls = d.type || 'neutral';
+                items += `<li class="${cls}">${d.icon || '•'} ${d.text}</li>`;
+            });
+            dl.innerHTML = items;
+        }
+
+        document.getElementById('feedbackBox').classList.add('show');
+        retryBtn.disabled = false;
+        confirmBtn.disabled = false;
+        recordBtn.disabled = false;
+        recordBtn.textContent = '🎤 重新录音';
+        status.textContent = `✅ 第 ${attemptNum} 次录音完成，请查看评价。满意后点击"确认提交"。`;
+        status.style.color = '#2c5f2d';
+
+        const cb = document.getElementById('collectNoteBtn');
+        if (cb) {
+            cb.disabled = false;
+            cb.textContent = '📒 收藏到语料笔记';
+            cb.style.background = '#f5f0d7';
+            cb.onclick = function() {
+                const sug = task.collectSuggestion || transcript;
+                if (sug) { addNote(step.label + ` (第${attemptNum}次)`, sug); this.textContent = '✅ 已收藏'; this.disabled = true; this.style.background = '#dce8dc'; }
+            };
+        }
+    }
+
+    function finishRecording(transcript) {
+        isRecording = false;
+        recordBtn.classList.remove('recording');
+        recordBtn.textContent = '🎤 重新录音';
+        if (transcript && transcript.trim().length > 0) {
+            const attemptNum = (attemptLogs[idx] || []).length + 1;
+            status.textContent = `✅ 第 ${attemptNum} 次录音完成，正在评测...`;
+            status.style.color = '#2c5f2d';
+            performEvaluation(transcript, attemptNum);
+        } else {
+            status.textContent = '⚠️ 未检测到语音，请重试';
+            status.style.color = '#c0392b';
+            recordBtn.disabled = false;
+            recordBtn.textContent = '🎤 重新录音';
+            retryBtn.disabled = false;
+            confirmBtn.disabled = false;
+        }
+    }
+
+    recordBtn.addEventListener('click', function() {
+        if (completedSteps[idx]) return;
+        if (isRecording) {
+            if (recognition) recognition.stop();
+            if (finalTranscript) { finishRecording(finalTranscript); }
+            else {
+                isRecording = false;
+                recordBtn.classList.remove('recording');
+                recordBtn.textContent = '🎤 重新录音';
+                status.textContent = '⏸️ 录音已停止，未获取到有效语音，请重试';
+                status.style.color = '#888';
+            }
+            return;
+        }
+        if (!initRecognition()) {
+            status.textContent = '⚠️ 浏览器不支持语音识别，请使用 Chrome 或 Edge';
+            status.style.color = '#c0392b';
+            return;
+        }
+        document.getElementById('feedbackBox').classList.remove('show');
+        document.getElementById('transcriptDisplay').innerHTML = '';
+        document.getElementById('evalDetailList').innerHTML = '';
+        finalTranscript = '';
+
+        isRecording = true;
+        recordBtn.classList.add('recording');
+        recordBtn.textContent = '⏹️ 停止录音';
+        status.textContent = '🎤 正在录音，请用英文回答...';
+        status.style.color = '#c0392b';
+        retryBtn.disabled = true;
+        confirmBtn.disabled = true;
+
+        recognition.start();
+        recognition.onresult = function(event) {
+            finalTranscript = event.results[0][0].transcript;
+            status.textContent = '🎤 录音中... (识别到部分内容)';
+        };
+        recognition.onerror = function(event) {
+            if (event.error === 'no-speech') status.textContent = '⚠️ 未检测到语音，请重试';
+            else status.textContent = '⚠️ 录音出错: ' + event.error + '，请重试';
+            status.style.color = '#c0392b';
+            isRecording = false;
+            recordBtn.classList.remove('recording');
+            recordBtn.textContent = '🎤 重新录音';
+            retryBtn.disabled = false;
+            confirmBtn.disabled = false;
+        };
+        recognition.onend = function() {
+            if (isRecording) {
+                if (finalTranscript) { finishRecording(finalTranscript); }
+                else {
+                    isRecording = false;
+                    recordBtn.classList.remove('recording');
+                    recordBtn.textContent = '🎤 重新录音';
+                    status.textContent = '⏸️ 录音结束，未识别到内容，请重试';
+                    status.style.color = '#888';
+                    retryBtn.disabled = false;
+                    confirmBtn.disabled = false;
+                }
+            }
+        };
+    });
+
+    if (retryBtn) {
+        retryBtn.addEventListener('click', function() {
+            if (completedSteps[idx]) return;
+            document.getElementById('feedbackBox').classList.remove('show');
+            document.getElementById('transcriptDisplay').innerHTML = '';
+            document.getElementById('evalDetailList').innerHTML = '';
+            recordBtn.disabled = false;
+            recordBtn.textContent = '🎤 重新录音';
+            status.textContent = '⏸️ 准备就绪，点击录音按钮重新尝试';
+            status.style.color = '#888';
+            confirmBtn.disabled = true;
+            const cb = document.getElementById('collectNoteBtn');
+            if (cb) { cb.disabled = true; cb.textContent = '📒 收藏到语料笔记'; cb.style.background = '#f5f0d7'; }
+        });
+    }
+
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+            if (completedSteps[idx]) return;
+            const logs = attemptLogs[idx] || [];
+            if (logs.length === 0) { showToast('请先完成至少一次录音再提交'); return; }
+            const latest = logs[logs.length - 1];
+            stepResults[idx] = latest.level;
+            completedSteps[idx] = true;
+
+            recordBtn.disabled = true;
+            recordBtn.textContent = '✅ 已完成';
+            retryBtn.disabled = true;
+            confirmBtn.disabled = true;
+            confirmBtn.classList.add('confirmed');
+            confirmBtn.textContent = '✅ 已提交';
+            status.textContent = '✅ 已确认提交！';
+            status.style.color = '#2c5f2d';
+            const cb = document.getElementById('collectNoteBtn');
+            if (cb) cb.disabled = true;
+
+            updateProgress();
+            updateIndicators();
+            showToast('🎉 本步骤已完成！');
+            speakText(`You have completed this step. Your final result is ${latest.level}.`);
+            checkAllDone();
+        });
+    }
+}
+
+// ================================================================
+//  进度与导航
+// ================================================================
+function updateProgress() {
+    const done = completedSteps.filter(c => c).length;
+    document.getElementById('progressFill').style.width = Math.round((done / totalSteps) * 100) + '%';
+    document.getElementById('progressText').textContent = `${done} / ${totalSteps} 步`;
+}
+function updateIndicators() {
+    document.querySelectorAll('.step-dot').forEach((dot, i) => {
+        dot.classList.remove('active','completed','failed','locked');
+        if (i === currentStep) dot.classList.add('active');
+        else if (completedSteps[i]) {
+            const r = stepResults[i];
+            if (r === 'perfect' || r === 'good') dot.classList.add('completed');
+            else dot.classList.add('failed');
+        } else if (i > currentStep) dot.classList.add('locked');
+    });
+}
+function checkAllDone() {
+    if (completedSteps.every(c => c === true)) {
+        setTimeout(() => {
+            if (confirm('🎉 所有步骤已完成！是否查看综合报告？')) showReport();
+        }, 800);
+    }
+}
+
+// ================================================================
+//  报告
+// ================================================================
+function showReport() {
+    document.getElementById('reportPage').classList.add('active');
+    document.getElementById('contentArea').innerHTML = '';
+    let totalStars = 0, perfectCount = 0;
+    const sv = { perfect:3, good:2, poor:1 };
+    let detailHTML = '';
+    // 分阶段统计
+    const phases = { pre: { label:'行前', steps: [], stars: 0, count: 0 },
+                     during: { label:'行中', steps: [], stars: 0, count: 0 },
+                     post: { label:'行后', steps: [], stars: 0, count: 0 } };
+    steps.forEach((s, i) => {
+        const r = stepResults[i];
+        const stars = r ? sv[r] : 0;
+        totalStars += stars;
+        if (r === 'perfect') perfectCount++;
+        const sd = r ? '⭐'.repeat(stars) : '—';
+        const attemptCount = (attemptLogs[i] || []).length;
+        const attemptInfo = attemptCount > 0 ? ` (尝试${attemptCount}次)` : '';
+        detailHTML += `<div class="report-item"><span class="step-name">${i+1}. ${s.label} <span style="font-size:0.65rem;color:#888;">${attemptInfo}</span></span><span class="step-stars">${sd}</span></div>`;
+        if (phases[s.phase]) {
+            phases[s.phase].steps.push({ label: s.label, stars, result: r });
+            phases[s.phase].stars += stars;
+            phases[s.phase].count += 1;
+        }
+    });
+    const avg = Math.round((totalStars / (steps.length * 3)) * 100);
+    document.getElementById('totalStars').textContent = totalStars;
+    document.getElementById('perfectCount').textContent = perfectCount;
+    document.getElementById('avgScore').textContent = avg + '%';
+    document.getElementById('reportDetail').innerHTML = detailHTML;
+
+    // 分阶段展示
+    let phaseHTML = '';
+    const phaseColors = { pre:'#dbeafe', during:'#fef3c7', post:'#d1fae5' };
+    Object.keys(phases).forEach(key => {
+        const p = phases[key];
+        const avgStars = p.count > 0 ? (p.stars / p.count).toFixed(1) : 0;
+        phaseHTML += `<div style="background:${phaseColors[key]}; border-radius:16px; padding:8px 14px; flex:1; min-width:80px; text-align:center;">
+            <div style="font-size:0.65rem; color:#555;">${p.label}</div>
+            <div style="font-size:1.1rem; font-weight:700; color:#2c5f2d;">⭐${avgStars}</div>
+            <div style="font-size:0.6rem; color:#888;">${p.count}步</div>
+        </div>`;
+    });
+    document.getElementById('reportPhaseSummary').innerHTML = phaseHTML;
+
+    // 教学目标达成度
+    const preDone = completedSteps.filter((v,i) => steps[i].phase === 'pre' && v).length;
+    const preTotal = steps.filter(s => s.phase === 'pre').length;
+    const duringDone = completedSteps.filter((v,i) => steps[i].phase === 'during' && v).length;
+    const duringTotal = steps.filter(s => s.phase === 'during').length;
+    const postDone = completedSteps.filter((v,i) => steps[i].phase === 'post' && v).length;
+    const postTotal = steps.filter(s => s.phase === 'post').length;
+    const goalHTML = `
+        <div style="font-weight:700; font-size:0.9rem; color:#2c5f2d; margin-bottom:6px;">🎯 教学目标达成度</div>
+        <div style="font-size:0.85rem; line-height:1.8;">
+            <div>🔹 行前基础能力：${preDone}/${preTotal} 步完成 ${preDone===preTotal ? '✅ 已达成' : '⚠️ 部分达成'}</div>
+            <div>⭐ 行中核心能力：${duringDone}/${duringTotal} 步完成 ${duringDone===duringTotal ? '✅ 已达成' : '⚠️ 部分达成'}</div>
+            <div>🔸 行后综合应用：${postDone}/${postTotal} 步完成 ${postDone===postTotal ? '✅ 已达成' : '⚠️ 部分达成'}</div>
+        </div>
+    `;
+    document.getElementById('reportGoalAchievement').innerHTML = goalHTML;
+
+    const rn = document.getElementById('reportNotesList');
+    if (notes.length === 0) rn.innerHTML = '<div style="color:#bbb;text-align:center;padding:10px;font-size:0.85rem;">暂无收藏语料</div>';
+    else rn.innerHTML = notes.map(n => `<div class="note-entry">📌 ${n.source}: ${n.content}</div>`).join('');
+
+    document.getElementById('reportPage').scrollIntoView({ behavior:'smooth', block:'start' });
+    speakText(`You have completed all tasks. Your total stars: ${totalStars}. Overall score: ${avg} percent.`);
+}
+
+// ================================================================
+//  导航
+// ================================================================
+function goToStep(i) {
+    if (i < 0 || i >= steps.length) return;
+    if (i > currentStep && !completedSteps[i-1]) {
+        showToast('请先完成当前步骤再继续');
+        return;
+    }
+    currentStep = i;
+    renderStep(i);
+    document.querySelector('.container').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function renderNoteList() {
+    const c = document.getElementById('noteList');
+    if (!c) return;
+    if (notes.length === 0) { c.innerHTML = '<div class="empty-note">✨ 还没有收藏语料</div>'; return; }
+    c.innerHTML = notes.map(n => `
+        <div class="note-item">
+            <div class="note-source">📌 ${n.source}</div>
+            <div class="note-content">${n.content}</div>
+            <div class="note-time">${n.time}</div>
+        </div>
+    `).join('');
+}
+
+// ================================================================
+//  初始化
+// ================================================================
+document.addEventListener('DOMContentLoaded', function() {
+    loadNotes();
+    renderStep(0);
+
+    document.getElementById('openNoteBtn').addEventListener('click', () => {
+        document.getElementById('noteModal').classList.add('active');
+        renderNoteList();
+    });
+    document.getElementById('closeNoteBtn').addEventListener('click', () => document.getElementById('noteModal').classList.remove('active'));
+    document.getElementById('noteModal').addEventListener('click', e => { if (e.target === e.currentTarget) e.target.classList.remove('active'); });
+    document.getElementById('clearNoteBtn').addEventListener('click', () => {
+        if (confirm('清空所有笔记？')) { notes = []; saveNotes(); renderNoteList(); }
+    });
+
+    document.querySelectorAll('.step-dot').forEach(dot => {
+        dot.addEventListener('click', function() {
+            const i = parseInt(this.dataset.step);
+            if (i <= currentStep || completedSteps[i-1] || i === 0) goToStep(i);
+            else showToast('请先完成前面的步骤');
+        });
+    });
+
+    document.getElementById('prevBtn').addEventListener('click', () => { if (currentStep > 0) goToStep(currentStep-1); });
+    document.getElementById('nextBtn').addEventListener('click', () => {
+        if (currentStep < steps.length-1) {
+            if (!completedSteps[currentStep]) {
+                showToast('请先完成当前步骤（录音后点击"确认提交"）');
+                return;
+            }
+            goToStep(currentStep+1);
+        }
+    });
+
+    document.getElementById('restartBtn').addEventListener('click', function() {
+        if (confirm('重新实训将重置所有进度，确定吗？')) {
+            completedSteps.fill(false);
+            stepResults.fill(null);
+            attemptLogs = new Array(steps.length).fill(null).map(() => []);
+            currentStep = 0;
+            document.getElementById('reportPage').classList.remove('active');
+            renderStep(0);
+            updateProgress();
+            updateIndicators();
+        }
+    });
+
+    document.getElementById('exportReportBtn').addEventListener('click', function() {
+        const total = document.getElementById('totalStars').textContent;
+        const avg = document.getElementById('avgScore').textContent;
+        let text = `旅游英语口语实训报告\n总星级: ${total}\n综合得分: ${avg}\n\n详细:\n`;
+        steps.forEach((s, i) => {
+            const r = stepResults[i];
+            const rs = r ? (r === 'perfect' ? '⭐⭐⭐' : r === 'good' ? '⭐⭐' : '⭐') : '—';
+            const attemptCount = (attemptLogs[i] || []).length;
+            text += `${i+1}. ${s.label}: ${rs} (尝试${attemptCount}次)\n`;
+        });
+        if (notes.length) text += '\n语料笔记:\n' + notes.map(n => `- ${n.source}: ${n.content}`).join('\n');
+        navigator.clipboard.writeText(text).then(() => showToast('📋 报告已复制')).catch(() => alert('复制失败\n\n' + text));
+    });
+});
+</script>
+</body>
+</html>
